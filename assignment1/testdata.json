@@ -83,6 +83,27 @@
       "gender": "M",
       "preferences": ["F"],
       "responses": [1, 1, 4, 2, 4, 2, 3, 2, 3, 2, 4, 1, 1, 2, 2, 4, 3, 2, 1, 1]
+    },
+    {
+      "name": "[TEST] Tarun's Sweetheart",
+      "gradYear": 2023,
+      "gender": "F",
+      "preferences": ["M"],
+      "responses": [1, 1, 4, 2, 4, 2, 3, 2, 3, 2, 4, 1, 1, 2, 2, 4, 3, 2, 1, 1]
+    },
+    {
+      "name": "[TEST] Rare Guy",
+      "gradYear": 2023,
+      "gender": "M",
+      "preferences": ["F"],
+      "responses": [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+    },
+    {
+      "name": "[TEST] Rare Girl",
+      "gradYear": 2023,
+      "gender": "F",
+      "preferences": ["M"],
+      "responses": [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
     }
   ]
 }
