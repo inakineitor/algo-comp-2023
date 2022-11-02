@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Tuple
 from collections import deque
+from itertools import combinations
 
 PREFERENCE_CAN_MATCH = {
     'Men': ['Male'],
@@ -8,7 +9,7 @@ PREFERENCE_CAN_MATCH = {
     'Bisexual': ['Male', 'Female', 'Nonbinary']
 }
 
-def gale_shapley(proposers: List, receivers: List, proposer_rankings, receiver_rankings) -> List[Tuple]:
+def gale_shapley(proposers: List, receivers: List, proposer_rankings, receiver_rankings):
     receiver_matches = {receiver: None for receiver in receivers}
     matches = {proposer: None for proposer in proposers}
 
@@ -38,18 +39,16 @@ def generate_rankings(choosers: List[List], scores: List[List]) -> List[List]:
 
     def generate_rankings_for_user(user_id: int) -> deque[int]:
         ordered_list = sorted(range(n), key=lambda j: scores[user_id][j], reverse=True)
-        return deque(ordered_list) #! Check if we should filter or not. What if there are no solutoins?
-        return deque(filter(lambda receiver_id: receiver_id not in proposers, ordered_list))
+        return deque(filter(lambda receiver_id: receiver_id not in choosers, ordered_list))
+        #return deque(ordered_list)
 
     rankings = {proposer_id: generate_rankings_for_user(proposer_id) for proposer_id in choosers}
 
     return rankings
 
 
-
-def run_matching(scores: List[List], gender_id: List, gender_pref: List) -> List[Tuple]:
+def run_matching(og_scores: List[List], gender_id: List, gender_pref: List) -> List[Tuple]:
     """
-    TODO: Implement Gale-Shapley stable matching!
     :param scores: raw N x N matrix of compatibility scores. Use this to derive a preference rankings.
     :param gender_id: list of N gender identities (Male, Female, Non-binary) corresponding to each user
     :param gender_pref: list of N gender preferences (Men, Women, Bisexual) corresponding to each user
@@ -70,24 +69,53 @@ def run_matching(scores: List[List], gender_id: List, gender_pref: List) -> List
 
     #? Why is scores != score^T? It should be symmetric over the diagonal.
 
-    n = len(scores)
+    n = len(og_scores)
 
-    proposers = np.random.choice(n, n // 2, replace=False) # List of people to be considered as proposers
-    receivers = np.array([i for i in range(n) if i not in proposers]) # List of people to be considered as receivers
+    for proposers_tuple in combinations(range(n), n//2):
+        proposers = np.array(proposers_tuple)
+        receivers = np.array([i for i in range(n) if i not in proposers]) # List of people to be considered as receivers
 
-    for i in range(n - 1):
-        for j in range(i + 1, n):
-            gender_preference_mismatch = gender_id[i] not in PREFERENCE_CAN_MATCH[gender_pref[j]] or gender_id[j] not in PREFERENCE_CAN_MATCH[gender_pref[i]]
-            role_mismatch = (i in proposers and j in proposers) or (i in receivers and j in receivers)
-            if gender_preference_mismatch or role_mismatch:
-                scores[i][j] = -1 # Used to check for incompatible matches at the end
-                scores[j][i] = -1 # Used to check for incompatible matches at the end
+        scores = np.copy(og_scores)
 
-    proposer_rankings = generate_rankings(proposers, scores)
-    receiver_rankings = generate_rankings(receivers, scores)
+        for i in range(n - 1):
+            for j in range(i + 1, n):
+                gender_preference_mismatch = (gender_id[i] not in PREFERENCE_CAN_MATCH[gender_pref[j]]) or (gender_id[j] not in PREFERENCE_CAN_MATCH[gender_pref[i]])
+                role_mismatch = (i in proposers and j in proposers) or (i in receivers and j in receivers)
+                if gender_preference_mismatch or role_mismatch:
+                    scores[i][j] = 0 # Used to check for incompatible matches at the end
+                    scores[j][i] = 0 # Used to check for incompatible matches at the end
 
-    matches = gale_shapley(proposers, proposer_rankings, receiver_rankings)
-    return matches
+        proposer_rankings = generate_rankings(proposers, scores)
+        receiver_rankings = generate_rankings(receivers, scores)
+
+        matches = gale_shapley(proposers, receivers, proposer_rankings, receiver_rankings)
+
+        valid = True
+        for proposer_id, receiver_id in matches.items():
+            if scores[proposer_id][receiver_id] == 0:
+                valid = False
+                break
+        
+        if valid:
+            return matches
+        # Else it will continue to a new possibility
+
+    return None
+
+
+def check_matching(matches, gender_id, gender_pref):
+    incompatible = False
+    for proposer_id, receiver_id in matches.items():
+        gender_preference_mismatch = gender_id[proposer_id] not in PREFERENCE_CAN_MATCH[gender_pref[receiver_id]] or gender_id[receiver_id] not in PREFERENCE_CAN_MATCH[gender_pref[proposer_id]]
+        if gender_preference_mismatch:
+            print(f'Proposer {proposer_id} and Receiver {receiver_id} have incompatible gender preferences')
+            incompatible = True
+    if not incompatible:
+        print(f'Valid matching found!')
+        for proposer_id, receiver_id in matches.items():
+            print(f'Proposer {proposer_id} matched with Receiver {receiver_id}')
+    
+
 
 if __name__ == "__main__":
     raw_scores = np.loadtxt('raw_scores.txt').tolist()
@@ -104,3 +132,8 @@ if __name__ == "__main__":
             gender_preferences.append(curr)
 
     gs_matches = run_matching(raw_scores, genders, gender_preferences)
+
+    if gs_matches is None:
+        print(f'No possible matchings were found')
+    else:
+        check_matching(gs_matches, genders, gender_preferences)
